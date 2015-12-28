@@ -4900,11 +4900,13 @@ void vehicle_get_g_forces(rct_vehicle *vehicle, int *verticalG, int *lateralG)
 	// Call original version so we can test if our result is the same as the original
 	int eax, ebx, ecx, edx, esi, edi, ebp;
 	esi = (int)vehicle;
+#if 0
 	RCT2_CALLFUNC_X(0x006D73D0, &eax, &ebx, &ecx, &edx, &esi, &edi, &ebp);
 	if (gForceVert != (sint16)(eax & 0xFFFF))
 		assert(gForceVert == (sint16)(eax & 0xFFFF));
 	if (gForceLateral != (sint16)(edx & 0xFFFF))
 		assert(gForceLateral == (sint16)(edx & 0xFFFF));
+#endif
 
 	if (verticalG != NULL) *verticalG = (sint16)(gForceVert & 0xFFFF);
 	if (lateralG != NULL) *lateralG = (sint16)(gForceLateral & 0xFFFF);
