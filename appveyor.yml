@@ -17,6 +17,8 @@ install:
 
     7z x nsisxtra.zip > $null
 
+    ls "C:\ProgramData\chocolatey\lib\nsis.portable\tools\"
+
     cp FindProcDLL.dll "C:\ProgramData\chocolatey\lib\nsis.portable\tools\nsis-3.0b1\Plugins\x86-ansi"
 build_script:
 - ps: >-
