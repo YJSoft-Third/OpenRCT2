@@ -28,6 +28,9 @@
 #include "network/network.h"
 #include "openrct2.h"
 #include "util/util.h"
+#include "core/Util.hpp"
+#include "core/Memory.hpp"
+#include "core/Math.hpp"
 
 // Magic number for original game cfg file
 static const int MagicNumber = 0x0003113A;
@@ -289,12 +292,12 @@ config_property_definition _notificationsDefinitions[] = {
 };
 
 config_section_definition _sectionDefinitions[] = {
-	{ &gConfigGeneral, "general", _generalDefinitions, countof(_generalDefinitions) },
-	{ &gConfigInterface, "interface", _interfaceDefinitions, countof(_interfaceDefinitions) },
-	{ &gConfigSound, "sound", _soundDefinitions, countof(_soundDefinitions) },
-	{ &gConfigTwitch, "twitch", _twitchDefinitions, countof(_twitchDefinitions) },
-	{ &gConfigNetwork, "network", _networkDefinitions, countof(_networkDefinitions) },
-	{ &gConfigNotifications, "notifications", _notificationsDefinitions, countof(_notificationsDefinitions) },
+	{ &gConfigGeneral, "general", _generalDefinitions, Util::CountOf(_generalDefinitions) },
+	{ &gConfigInterface, "interface", _interfaceDefinitions, Util::CountOf(_interfaceDefinitions) },
+	{ &gConfigSound, "sound", _soundDefinitions, Util::CountOf(_soundDefinitions) },
+	{ &gConfigTwitch, "twitch", _twitchDefinitions, Util::CountOf(_twitchDefinitions) },
+	{ &gConfigNetwork, "network", _networkDefinitions, Util::CountOf(_networkDefinitions) },
+	{ &gConfigNotifications, "notifications", _notificationsDefinitions, Util::CountOf(_notificationsDefinitions) },
 };
 
 #pragma endregion
@@ -362,7 +365,7 @@ static void rwopswritestresc(SDL_RWops *file, const char *str) {
 		else ++length;
 	}
 
-	char *escaped = malloc(length + 1);
+	char *escaped = new char[length + 1];
 	int j=0;
 	for (const char *c = str; *c != '\0'; ++c) {
 		if (*c == '\\') escaped[j++] = '\\';
@@ -371,14 +374,14 @@ static void rwopswritestresc(SDL_RWops *file, const char *str) {
 	escaped[length] = '\0';
 
 	rwopswritestr(file, escaped);
-	SafeFree(escaped);
+	delete [] escaped;
 }
 
 void config_set_defaults()
 {
 	int i, j;
 
-	for (i = 0; i < countof(_sectionDefinitions); i++) {
+	for (i = 0; i < Util::CountOf(_sectionDefinitions); i++) {
 		config_section_definition *section = &_sectionDefinitions[i];
 		for (j = 0; j < section->property_definitions_count; j++) {
 			config_property_definition *property = &section->property_definitions[j];
@@ -427,14 +430,14 @@ void config_set_defaults()
 
 void config_release()
 {
-	for (int i = 0; i < countof(_sectionDefinitions); i++) {
+	for (int i = 0; i < Util::CountOf(_sectionDefinitions); i++) {
 		config_section_definition *section = &_sectionDefinitions[i];
 		for (int j = 0; j < section->property_definitions_count; j++) {
 			config_property_definition *property = &section->property_definitions[j];
 			value_union *destValue = (value_union*)((size_t)section->base_address + (size_t)property->offset);
 			if (property->type == CONFIG_VALUE_TYPE_STRING) {
 				utf8 **dst = (utf8**)&(destValue->value_string);
-				SafeFree(*dst);
+				SafeDelete(*dst);
 			}
 		}
 	}
@@ -487,7 +490,7 @@ bool config_open(const utf8string path)
 
 	currentSection = NULL;
 	lineBufferCapacity = 64;
-	lineBuffer = malloc(lineBufferCapacity);
+	lineBuffer = Memory::AllocateArray<char>(lineBufferCapacity);
 	lineLength = 0;
 
 	// Skim UTF-8 byte order mark
@@ -506,7 +509,7 @@ bool config_open(const utf8string path)
 
 		if (lineLength >= lineBufferCapacity) {
 			lineBufferCapacity *= 2;
-			lineBuffer = realloc(lineBuffer, lineBufferCapacity);
+			lineBuffer = Memory::ReallocateArray<char>(lineBuffer, lineBufferCapacity);
 		}
 	}
 
@@ -515,7 +518,7 @@ bool config_open(const utf8string path)
 		config_read_properties(&currentSection, lineBuffer);
 	}
 
-	free(lineBuffer);
+	delete lineBuffer;
 	SDL_RWclose(file);
 	return true;
 }
@@ -532,7 +535,7 @@ bool config_save(const utf8string path)
 		return false;
 	}
 
-	for (i = 0; i < countof(_sectionDefinitions); i++) {
+	for (i = 0; i < Util::CountOf(_sectionDefinitions); i++) {
 		config_section_definition *section = &_sectionDefinitions[i];
 
 		rwopswritec(file, '[');
@@ -679,7 +682,7 @@ config_section_definition *config_get_section_def(const utf8 *name, int size)
 {
 	int i;
 
-	for (i = 0; i < countof(_sectionDefinitions); i++) {
+	for (i = 0; i < Util::CountOf(_sectionDefinitions); i++) {
 		const_utf8string sectionName = _sectionDefinitions[i].section_name;
 		const int sectionNameSize = strnlen(sectionName, size);
 		if (sectionNameSize == size && sectionName[size] == 0 && _strnicmp(sectionName, name, size) == 0)
@@ -714,7 +717,7 @@ static utf8string escape_string(const utf8 *value, int valueSize) {
 			else ++length, backslash = true;
 		} else ++length, backslash = false;
 	}
-	utf8string escaped = malloc(length + 1);
+	utf8string escaped = new utf8[length + 1];
 
 	int j=0;
 	backslash = false;
@@ -768,7 +771,7 @@ void config_set_property(const config_section_definition *section, const config_
 		destValue->value_double = strtod(value, NULL);
 		break;
 	case CONFIG_VALUE_TYPE_STRING:
-		SafeFree(destValue->value_string);
+		SafeDelete(destValue->value_string);
 		destValue->value_string = escape_string(value, valueSize);
 		break;
 	}
@@ -887,7 +890,7 @@ static bool config_find_rct2_path(utf8 *resultPath)
 		gExePath
 	};
 
-	for (i = 0; i < countof(searchLocations); i++) {
+	for (i = 0; i < Util::CountOf(searchLocations); i++) {
 		if (platform_original_game_data_exists(searchLocations[i])) {
 			safe_strcpy(resultPath, searchLocations[i], MAX_PATH);
 			return true;
@@ -903,8 +906,8 @@ bool config_find_or_browse_install_directory()
 	utf8 *installPath;
 
 	if (config_find_rct2_path(path)) {
-		SafeFree(gConfigGeneral.game_path);
-		gConfigGeneral.game_path = malloc(strlen(path) + 1);
+		SafeDelete(gConfigGeneral.game_path);
+		gConfigGeneral.game_path = new char[strlen(path) + 1];
 		safe_strcpy(gConfigGeneral.game_path, path, MAX_PATH);
 	} else {
 		while (1) {
@@ -913,7 +916,7 @@ bool config_find_or_browse_install_directory()
 			if (installPath == NULL)
 				return false;
 
-			SafeFree(gConfigGeneral.game_path);
+			SafeDelete(gConfigGeneral.game_path);
 			gConfigGeneral.game_path = installPath;
 			
 			if (platform_original_game_data_exists(installPath))
@@ -1123,7 +1126,7 @@ void title_sequences_set_default()
 	platform_get_user_directory(path, "title sequences");
 	platform_ensure_directory_exists(path);
 
-	gConfigTitleSequences.presets = malloc(0);
+	gConfigTitleSequences.presets = Memory::AllocateArray<title_sequence>(0);
 	gConfigTitleSequences.num_presets = 0;
 
 	platform_get_openrct_data_path(dataPath);
@@ -1221,7 +1224,9 @@ static void title_sequence_open(const char *path, const char *customName)
 	// Otherwise allocate one
 	if (preset == gConfigTitleSequences.num_presets) {
 		gConfigTitleSequences.num_presets++;
-		gConfigTitleSequences.presets = realloc(gConfigTitleSequences.presets, sizeof(title_sequence) * (size_t)gConfigTitleSequences.num_presets);
+		gConfigTitleSequences.presets = Memory::ReallocateArray<title_sequence>(gConfigTitleSequences.presets, gConfigTitleSequences.num_presets);
+
+		//gConfigTitleSequences.presets = realloc(gConfigTitleSequences.presets, sizeof(title_sequence) * (size_t)gConfigTitleSequences.num_presets);
 
 		if (customName == NULL) {
 			char nameBuffer[MAX_PATH];
@@ -1239,8 +1244,9 @@ static void title_sequence_open(const char *path, const char *customName)
 			safe_strcpy(gConfigTitleSequences.presets[preset].path, path, MAX_PATH);
 		}
 
-		gConfigTitleSequences.presets[preset].saves = malloc(0);
-		gConfigTitleSequences.presets[preset].commands = malloc(0);
+		//gConfigTitleSequences.presets[preset].saves = malloc(0);
+		gConfigTitleSequences.presets[preset].saves = Memory::AllocateArray<char[TITLE_SEQUENCE_MAX_SAVE_LENGTH]>(0);
+		gConfigTitleSequences.presets[preset].commands = Memory::AllocateArray<title_command>(0);
 		gConfigTitleSequences.presets[preset].num_saves = 0;
 		gConfigTitleSequences.presets[preset].num_commands = 0;
 	}
@@ -1251,7 +1257,7 @@ static void title_sequence_open(const char *path, const char *customName)
 	fileEnumHandle = platform_enumerate_files_begin(titlePath);
 	while (platform_enumerate_files_next(fileEnumHandle, &fileInfo)) {
 		gConfigTitleSequences.presets[preset].num_saves++;
-		gConfigTitleSequences.presets[preset].saves = realloc(gConfigTitleSequences.presets[preset].saves, sizeof(char[TITLE_SEQUENCE_MAX_SAVE_LENGTH]) * (size_t)gConfigTitleSequences.presets[preset].num_saves);
+		gConfigTitleSequences.presets[preset].saves = Memory::ReallocateArray<char[TITLE_SEQUENCE_MAX_SAVE_LENGTH]>(gConfigTitleSequences.presets[preset].saves, gConfigTitleSequences.presets[preset].num_saves);
 		safe_strcpy(gConfigTitleSequences.presets[preset].saves[gConfigTitleSequences.presets[preset].num_saves - 1], fileInfo.path, TITLE_SEQUENCE_MAX_SAVE_LENGTH);
 		gConfigTitleSequences.presets[preset].saves[gConfigTitleSequences.presets[preset].num_saves - 1][TITLE_SEQUENCE_MAX_SAVE_LENGTH - 1] = '\0';
 	}
@@ -1261,7 +1267,7 @@ static void title_sequence_open(const char *path, const char *customName)
 	fileEnumHandle = platform_enumerate_files_begin(titlePath);
 	while (platform_enumerate_files_next(fileEnumHandle, &fileInfo)) {
 		gConfigTitleSequences.presets[preset].num_saves++;
-		gConfigTitleSequences.presets[preset].saves = realloc(gConfigTitleSequences.presets[preset].saves, sizeof(char[TITLE_SEQUENCE_MAX_SAVE_LENGTH]) * (size_t)gConfigTitleSequences.presets[preset].num_saves);
+		gConfigTitleSequences.presets[preset].saves = Memory::ReallocateArray<char[TITLE_SEQUENCE_MAX_SAVE_LENGTH]>(gConfigTitleSequences.presets[preset].saves, gConfigTitleSequences.presets[preset].num_saves);
 		safe_strcpy(gConfigTitleSequences.presets[preset].saves[gConfigTitleSequences.presets[preset].num_saves - 1], fileInfo.path, TITLE_SEQUENCE_MAX_SAVE_LENGTH);
 		gConfigTitleSequences.presets[preset].saves[gConfigTitleSequences.presets[preset].num_saves - 1][TITLE_SEQUENCE_MAX_SAVE_LENGTH - 1] = '\0';
 	}
@@ -1299,7 +1305,7 @@ static void title_sequence_open(const char *path, const char *customName)
 				command.zoom = atoi(part1) & 0xFF;
 			} else if (_stricmp(token, "SPEED") == 0) {
 				command.command = TITLE_SCRIPT_SPEED;
-				command.speed = max(1, min(4, atoi(part1) & 0xFF));
+				command.speed = Math::Max(1, Math::Min(4, atoi(part1) & 0xFF));
 			} else if (_stricmp(token, "WAIT") == 0) {
 				command.command = TITLE_SCRIPT_WAIT;
 				command.seconds = atoi(part1) & 0xFF;
@@ -1316,7 +1322,7 @@ static void title_sequence_open(const char *path, const char *customName)
 		}
 		if (command.command != 0xFF) {
 			gConfigTitleSequences.presets[preset].num_commands++;
-			gConfigTitleSequences.presets[preset].commands = realloc(gConfigTitleSequences.presets[preset].commands, sizeof(title_command) * (size_t)gConfigTitleSequences.presets[preset].num_commands);
+			gConfigTitleSequences.presets[preset].commands = Memory::ReallocateArray<title_command>(gConfigTitleSequences.presets[preset].commands, (size_t)gConfigTitleSequences.presets[preset].num_commands);
 			gConfigTitleSequences.presets[preset].commands[gConfigTitleSequences.presets[preset].num_commands - 1] = command;
 		}
 	} while (SDL_RWtell(file) < fileSize);
