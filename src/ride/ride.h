@@ -40,6 +40,8 @@ typedef struct {
 	ride_rating nausea;
 } rating_tuple;
 
+_Static_assert(sizeof(rating_tuple) == 6, "rating_tuple size");
+
 /**
  * Couples a ride type and subtype together.
  */
