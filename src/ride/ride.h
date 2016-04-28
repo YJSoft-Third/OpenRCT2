@@ -41,6 +41,7 @@ typedef struct {
 } rating_tuple;
 
 _Static_assert(sizeof(rating_tuple) == 6, "rating_tuple size");
+_Static_assert(sizeof(char) == 8, "char size");
 
 /**
  * Couples a ride type and subtype together.
