@@ -744,6 +744,11 @@ uint8 Network::GetPlayerID()
 	return player_id;
 }
 
+char *Network::NetworkKeyString()
+{
+    return key.PublicKeyString();
+}
+
 void Network::Update()
 {
 	switch (GetMode()) {
@@ -868,6 +873,12 @@ void Network::UpdateClient()
 		timeval timeout;
 		timeout.tv_sec = 0;
 		timeout.tv_usec = 0;
+        const char *pubkey = key.PublicKeyString();
+        if (pubkey == nullptr) {
+            log_error("Failed to load public key.");
+            connectfailed = true;
+            break;
+        }
 		if (select(server_connection.socket + 1, NULL, &writeFD, NULL, &timeout) > 0) {
 			error = 0;
 			socklen_t len = sizeof(error);
@@ -879,7 +890,7 @@ void Network::UpdateClient()
 			if (error == 0) {
 				status = NETWORK_STATUS_CONNECTED;
 				server_connection.ResetLastPacketTime();
-				Client_Send_AUTH(gConfigNetwork.player_name, "");
+                Client_Send_AUTH(gConfigNetwork.player_name, "", pubkey);
 				char str_authenticating[256];
 				format_string(str_authenticating, STR_MULTIPLAYER_AUTHENTICATING, NULL);
 				window_network_status_open(str_authenticating, []() -> void {
@@ -1280,13 +1291,14 @@ void Network::LoadGroups()
 	SDL_RWclose(file);
 }
 
-void Network::Client_Send_AUTH(const char* name, const char* password)
+void Network::Client_Send_AUTH(const char* name, const char* password, const char* pubkey)
 {
 	std::unique_ptr<NetworkPacket> packet = std::move(NetworkPacket::Allocate());
 	*packet << (uint32)NETWORK_COMMAND_AUTH;
 	packet->WriteString(NETWORK_STREAM_ID);
 	packet->WriteString(name);
 	packet->WriteString(password);
+    packet->WriteString(pubkey);
 	server_connection.authstatus = NETWORK_AUTH_REQUESTED;
 	server_connection.QueuePacket(std::move(packet));
 }
@@ -1696,6 +1708,7 @@ void Network::Server_Handle_AUTH(NetworkConnection& connection, NetworkPacket& p
 		const char* gameversion = packet.ReadString();
 		const char* name = packet.ReadString();
 		const char* password = packet.ReadString();
+        const char* pubkey = packet.ReadString();
 		if (!gameversion || strcmp(gameversion, NETWORK_STREAM_ID) != 0) {
 			connection.authstatus = NETWORK_AUTH_BADVERSION;
 		} else
@@ -2434,7 +2447,9 @@ void network_send_gamecmd(uint32 eax, uint32 ebx, uint32 ecx, uint32 edx, uint32
 
 void network_send_password(const char* password)
 {
-	gNetwork.Client_Send_AUTH(gConfigNetwork.player_name, password);
+    char *pubkey = gNetwork.NetworkKeyString();
+    gNetwork.Client_Send_AUTH(gConfigNetwork.player_name, password, pubkey);
+    free(pubkey);
 }
 
 void network_set_password(const char* password)

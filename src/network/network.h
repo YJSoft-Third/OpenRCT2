@@ -35,7 +35,8 @@ enum {
 	NETWORK_AUTH_BADNAME,
 	NETWORK_AUTH_BADPASSWORD,
 	NETWORK_AUTH_FULL,
-	NETWORK_AUTH_REQUIREPASSWORD
+    NETWORK_AUTH_REQUIREPASSWORD,
+    NETWORK_AUTH_CHALLENGED,
 };
 
 enum {
@@ -111,6 +112,7 @@ extern "C" {
 #include <string>
 #include <vector>
 #include <SDL.h>
+#include "NetworkKey.h"
 
 template <std::size_t size>
 struct ByteSwapT { };
@@ -166,6 +168,7 @@ public:
 	int last_action = -999;
 	uint32 last_action_time = 0;
 	rct_xyz16 last_action_coord = { 0 };
+    NetworkKey key;
 };
 
 class NetworkAction
@@ -313,8 +316,9 @@ public:
 	void SetDefaultGroup(uint8 id);
 	void SaveGroups();
 	void LoadGroups();
+	char *NetworkKeyString();
 
-	void Client_Send_AUTH(const char* name, const char* password);
+    void Client_Send_AUTH(const char* name, const char* password, const char *pubkey);
 	void Server_Send_AUTH(NetworkConnection& connection);
 	void Server_Send_MAP(NetworkConnection* connection = nullptr);
 	void Client_Send_CHAT(const char* text);
@@ -346,6 +350,7 @@ private:
 	void PrintError();
 	const char* GetMasterServerUrl();
 	std::string GenerateAdvertiseKey();
+    NetworkKey key;
 
 	struct GameCommand
 	{
