@@ -19,6 +19,7 @@
 
 #include <SDL2/SDL_rwops.h>
 #include <openssl/evp.h>
+#include <string>
 
 class NetworkKey
 {
@@ -30,11 +31,13 @@ public:
     bool LoadPublic(SDL_RWops *file);
     bool SavePrivate(SDL_RWops *file);
     bool SavePublic(SDL_RWops *file);
-    char *PublicKeyString();
+    std::string PublicKeyString();
+    std::string PublicKeyHash();
     void Unload();
     bool Sign(const char *md, const size_t len, char **signature, size_t *out_size);
     bool Verify(const char *md, const size_t len, const char* sig, const size_t siglen);
 private:
+	NetworkKey ( const NetworkKey & ) = delete;
     EVP_PKEY_CTX *m_ctx = nullptr;
     EVP_PKEY *m_key = nullptr;
 };
