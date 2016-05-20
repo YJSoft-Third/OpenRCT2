@@ -17,6 +17,8 @@
 #ifndef NETWORKKEY_H
 #define NETWORKKEY_H
 
+#ifndef DISABLE_NETWORK
+
 #include <SDL_rwops.h>
 #include <openssl/evp.h>
 #include <string>
@@ -42,4 +44,5 @@ private:
     EVP_PKEY *m_key = nullptr;
 };
 
+#endif // DISABLE_NETWORK
 #endif // NETWORKKEY_H
