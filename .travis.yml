@@ -3,6 +3,7 @@ language: c
 before_install:
     - if [[ $TRAVIS_OS_NAME == "linux" ]]; then bash scripts/linux/install.sh; fi
     - if [[ $TRAVIS_OS_NAME == "osx" ]]; then sudo gem install xcpretty-travis-formatter; fi
+    - if [[ $TRAVIS_OS_NAME == "osx" ]]; then brew update && brew install openssl --universal; fi
 
 sudo: required
 dist: trusty
