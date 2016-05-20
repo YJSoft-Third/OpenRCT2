@@ -17,7 +17,7 @@
 #ifndef NETWORKKEY_H
 #define NETWORKKEY_H
 
-#include <SDL2/SDL_rwops.h>
+#include <SDL_rwops.h>
 #include <openssl/evp.h>
 #include <string>
 
